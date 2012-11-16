@@ -18,7 +18,7 @@
 #   along with ocpy. If not, see <http://www.gnu.org/licenses/>.
 #
 
-import sys, os, time, atexit, pyinotify, subprocess, threading
+import sys, os, time, atexit, pyinotify, subprocess, threading, ConfigParser
 from signal import SIGTERM 
 
 class Daemon:
@@ -255,20 +255,52 @@ class ocpy(Daemon, pyinotify.ProcessEvent):
                 self.name = 'ocpy'
                 self.version = '0.1.0'
 
-                self.csyncExe        = '/usr/bin/csync'
-                self.csyncLocalPath  = '/home/visit/owncloud'
-                self.csyncProtocol   = 'ownclouds'
-                self.csyncUser       = 'myuser'
-                self.csyncPassword   = 'mypass'
-                self.csyncHost       = 'mycloud.de'
-                self.csyncPort       = 443 
-                self.csyncRemotePath = '/files/webdav.php'
-                self.csyncSubfolder  = 'clientsync'
-                self.csyncTimeout    = 60
-
                 # internal status flags
                 self.csyncInProgress = False
                 self.csyncSubmitAgain = False
+
+		# create default configuration object
+		self.configDefault = ConfigParser.ConfigParser()
+		self.configDefault.add_section('csync')
+		self.configDefault.set('csync', 'exe',         '/usr/bin/csync')
+		self.configDefault.set('csync', 'local_path',  os.environ['HOME'] + '/ownCloud')
+		self.configDefault.set('csync', 'protocol',    'owncloud')
+		self.configDefault.set('csync', 'user',        '')
+		self.configDefault.set('csync', 'password',    '')
+		self.configDefault.set('csync', 'host',        'localhost')
+		self.configDefault.set('csync', 'port',        '80')
+		self.configDefault.set('csync', 'remote_path', '/files/webdav.php')
+		self.configDefault.set('csync', 'subfolder',   '')
+		self.configDefault.set('csync', 'timeout',     '60')
+
+		# read configuration file if exists
+		self.configFile = os.path.expanduser('~/.config/' + self.name + '/' + self.name + '.conf')
+		self.configFileExample = os.path.expanduser('~/.config/' + self.name + '/' + self.name + '.conf.example')
+		self.config = ConfigParser.ConfigParser()
+		if self.config.read(self.configFile) == []:
+			self.firstRun = True
+			configDir = os.path.dirname(self.configFile)
+			if not os.path.exists(configDir):
+				os.makedirs(configDir)
+			with open(self.configFileExample, 'wb') as configFileExample:
+				self.configDefault.write(configFileExample)
+			with open(self.configFile, 'wb') as configFile:
+				self.configDefault.write(configFile)
+			if self.config.read(self.configFile) == []:
+				print "configuration file %s is not accessible" % self.configFile
+				sys.exit(1)
+
+		# persist configuration to parent object
+		self.csyncExe        = self.config.get('csync', 'exe')
+		self.csyncLocalPath  = self.config.get('csync', 'local_path')
+		self.csyncProtocol   = self.config.get('csync', 'protocol')
+		self.csyncUser       = self.config.get('csync', 'user')
+		self.csyncPassword   = self.config.get('csync', 'password')
+		self.csyncHost       = self.config.get('csync', 'host')
+		self.csyncPort       = self.config.getint('csync', 'port')
+		self.csyncRemotePath = self.config.get('csync', 'remote_path')
+		self.csyncSubfolder  = self.config.get('csync', 'subfolder')
+		self.csyncTimeout    = self.config.getint('csync', 'timeout')
 
 		# initialize inotify
 		self.watchman = pyinotify.WatchManager()
