@@ -1,0 +1,8 @@
+ocpy
+
+A python sync daemon for ownCloud depending on csync.
+
+Thanks to:
+* Frank Karlitschek and the ownCloud community for ownCloud (http://owncloud.org/)
+* Andreas Schneider for csync (http://www.csync.org/)
+
