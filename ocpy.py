@@ -278,14 +278,15 @@ class ocpy(Daemon, pyinotify.ProcessEvent):
 		self.configFileExample = os.path.expanduser('~/.config/' + self.name + '/' + self.name + '.conf.example')
 		self.config = ConfigParser.ConfigParser()
 		if self.config.read(self.configFile) == []:
-			self.firstRun = True
 			configDir = os.path.dirname(self.configFile)
+			old_umask = os.umask(077)
 			if not os.path.exists(configDir):
 				os.makedirs(configDir)
 			with open(self.configFileExample, 'wb') as configFileExample:
 				self.configDefault.write(configFileExample)
 			with open(self.configFile, 'wb') as configFile:
 				self.configDefault.write(configFile)
+			os.umask(old_umask)
 			if self.config.read(self.configFile) == []:
 				print "configuration file %s is not accessible" % self.configFile
 				sys.exit(1)
